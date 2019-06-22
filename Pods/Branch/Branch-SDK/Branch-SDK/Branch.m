@@ -339,6 +339,10 @@ static BOOL bnc_useTestBranchKey = NO;
 static NSString *bnc_branchKey = nil;
 static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
 
++ (void) resetBranchKey {
+    bnc_branchKey = nil;
+}
+
 + (void) setUseTestBranchKey:(BOOL)useTestKey {
     @synchronized (self) {
         if (bnc_branchKey && !!useTestKey != !!bnc_useTestBranchKey) {
@@ -355,7 +359,16 @@ static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
     }
 }
 
-+ (void) setBranchKey:(NSString*)branchKey {
++ (void)setBranchKey:(NSString *)branchKey {
+    NSError *error;
+    [self setBranchKey:branchKey error:&error];
+    
+    if (error) {
+        BNCLogError(@"Branch init error: %@", error.localizedDescription);
+    }
+}
+
++ (void)setBranchKey:(NSString*)branchKey error:(NSError **)error {
     @synchronized (self) {
         if (bnc_branchKey) {
             if (branchKey &&
@@ -363,13 +376,17 @@ static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
                 [branchKey isEqualToString:bnc_branchKey]) {
                 return;
             }
-            BNCLogError(@"Branch key can only be set once.");
+            
+            NSString *errorMessage = [NSString stringWithFormat:@"Branch key can only be set once."];
+            *error = [NSError branchErrorWithCode:BNCInitError localizedMessage:errorMessage];
             return;
         }
+        
         if (![branchKey isKindOfClass:[NSString class]]) {
             NSString *typeName = (branchKey) ? NSStringFromClass(branchKey.class) : @"<nil>";
-            [NSException raise:NSInternalInconsistencyException
-                format:@"Invalid Branch key of type '%@'.", typeName];
+            
+            NSString *errorMessage = [NSString stringWithFormat:@"Invalid Branch key of type '%@'.", typeName];
+            *error = [NSError branchErrorWithCode:BNCInitError localizedMessage:errorMessage];
             return;
         }
 
@@ -379,12 +396,13 @@ static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
                 @"You are using your test app's Branch Key. "
                  "Remember to change it to live Branch Key for production deployment."
             );
-        } else
-        if ([branchKey hasPrefix:@"key_live"]) {
+        
+        } else if ([branchKey hasPrefix:@"key_live"]) {
             bnc_useTestBranchKey = NO;
+        
         } else {
-            [NSException raise:NSInternalInconsistencyException
-                format:@"Invalid Branch key format. Did you add your Branch key to your Info.plist? Passed key is '%@'.", branchKey];
+            NSString *errorMessage = [NSString stringWithFormat:@"Invalid Branch key format. Did you add your Branch key to your Info.plist? Passed key is '%@'.", branchKey];
+            *error = [NSError branchErrorWithCode:BNCInitError localizedMessage:errorMessage];
             return;
         }
 
@@ -738,6 +756,10 @@ static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
 }
 
 - (BOOL)handleSchemeDeepLink_private:(NSURL*)url fromSelf:(BOOL)isFromSelf {
+    if (isFromSelf) {
+        [self resetUserSession];
+    }
+    
     BOOL handled = NO;
     self.preferenceHelper.referringURL = nil;
     if (url && ![url isEqual:[NSNull null]]) {
@@ -766,13 +788,10 @@ static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
         NSDictionary *params = [BNCEncodingUtils decodeQueryStringToDictionary:query];
         if (params[@"link_click_id"]) {
             handled = YES;
-            if (isFromSelf) {
-                [self resetUserSession];
-            }
             self.preferenceHelper.linkClickIdentifier = params[@"link_click_id"];
         }
     }
-    [self initUserSessionAndCallCallback:(self.initializationStatus != BNCInitStatusInitialized)];
+    [self initUserSessionAndCallCallback:YES];
     return handled;
 }
 
@@ -848,14 +867,9 @@ static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
 
     // Check to see if a browser activity needs to be handled
     if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {
-
         // If we're already in-progress cancel the last open and do this one.
-        BOOL isNewSession = NO;
-        if (![self removeInstallOrOpen]) {
-            isNewSession = YES;
-        }
-
-        return [self handleDeepLink:userActivity.webpageURL fromSelf:isNewSession];
+        [self removeInstallOrOpen];
+        return [self handleDeepLink:userActivity.webpageURL fromSelf:YES];
     }
 
     // Check to see if a spotlight activity needs to be handled
@@ -1788,7 +1802,7 @@ static BOOL bnc_enableFingerprintIDInCrashlyticsReports = YES;
                 linkData:linkData
                 linkCache:self.linkCache];
 
-        if ((self.initializationStatus == BNCInitStatusInitialized) && !self.preferenceHelper.trackingDisabled) {
+        if (self.initializationStatus == BNCInitStatusInitialized) {
             BNCLogDebug(@"Creating a custom URL synchronously.");
             BNCServerResponse *serverResponse = [req makeRequest:self.serverInterface key:self.class.branchKey];
             shortURL = [req processResponse:serverResponse];
@@ -2050,23 +2064,21 @@ static inline void BNCPerformBlockOnMainThreadSync(dispatch_block_t block) {
 
         if (req) {
 
-            if (Branch.trackingDisabled) {
-                // If tracking is disabled keep failing everything in the queue.
-            }
-            else if (![req isKindOfClass:[BranchInstallRequest class]] && !self.preferenceHelper.identityID) {
+            if (![req isKindOfClass:[BranchInstallRequest class]] && !self.preferenceHelper.identityID) {
                 BNCLogError(@"User session has not been initialized!");
                 BNCPerformBlockOnMainThreadSync(^{
                     [req processResponse:nil error:[NSError branchErrorWithCode:BNCInitError]];
                 });
                 return;
-            }
-            else if (![req isKindOfClass:[BranchOpenRequest class]] &&
+                
+            } else if (![req isKindOfClass:[BranchOpenRequest class]] &&
                 (!self.preferenceHelper.deviceFingerprintID || !self.preferenceHelper.sessionID)) {
                 BNCLogError(@"Missing session items!");
                 BNCPerformBlockOnMainThreadSync(^{
                     [req processResponse:nil error:[NSError branchErrorWithCode:BNCInitError]];
                 });
                 return;
+                
             }
 
             dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);

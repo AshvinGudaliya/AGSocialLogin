@@ -277,22 +277,21 @@ To deep link, Branch must initialize a session to check if the user originated f
     return YES;
 }
 
-- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {
-
+- (BOOL)application:(UIApplication *)application
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options {
     BOOL branchHandled =
         [[Branch getInstance]
             application:application
                 openURL:url
-      sourceApplication:sourceApplication
-             annotation:annotation];
-
+                options:options];
     if (!branchHandled) {
         // do other deep link routing for the Facebook SDK, Pinterest SDK, etc
     }
     return YES;
 }
 
-- (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray *restorableObjects))restorationHandler {
+- (BOOL)application:(UIApplication *)application continueUserActivity:(NSUserActivity *)userActivity restorationHandler:(void (^)(NSArray<id<UIUserActivityRestoring>> *restorableObjects))restorationHandler {
     BOOL handledByBranch = [[Branch getInstance] continueUserActivity:userActivity];
 
     return handledByBranch;
@@ -316,13 +315,12 @@ func application(_ application: UIApplication, didFinishLaunchingWithOptions lau
   return true
 }
 
-func application(_ application: UIApplication, open url: URL, sourceApplication: String?, annotation: Any) -> Bool {
-
+func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
     // Pass the url to the handle deep link call
-    let branchHandled = Branch.getInstance().application(application,
+    let branchHandled = Branch.getInstance().application(
+        application,
         open: url,
-        sourceApplication: sourceApplication,
-        annotation: annotation
+        options: options
     )
     if (!branchHandled) {
         // If not handled by Branch, do other deep link routing for the
@@ -332,7 +330,7 @@ func application(_ application: UIApplication, open url: URL, sourceApplication:
     return true
 }
 
-func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([Any]?) -> Void) -> Bool {
+func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
     let handledByBranch = Branch.getInstance().continue(userActivity)
 
     return handledByBranch
@@ -665,9 +663,9 @@ event.logEvent()
 
 ### Register Custom Events (Deprecated)
 
-The old `userCompletedAction:` methods of tracking user actions and events are deprecated and will go away eventually. Use the new `BranchEvent` to track user actions instead, as described above.
+**For Clients Using Referrals**
 
-Here is the legacy documentation:
+If you are using Branch's Referral feature, please use the legacy documentation provided below using the `userCompletedAction` methods. Do not upgrade to the new `BranchEvent` methods for tracking user actions mentioned above.
 
 #### Methods
 
@@ -1492,4 +1490,3 @@ The response will return an array that has been parsed from the following JSON:
 1. _1_ - A reward that was added manually.
 2. _2_ - A redemption of credits that occurred through our API or SDKs.
 3. _3_ - This is a very unique case where we will subtract credits automatically when we detect fraud.
-

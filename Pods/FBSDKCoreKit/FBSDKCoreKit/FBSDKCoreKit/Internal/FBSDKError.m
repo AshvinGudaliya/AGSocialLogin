@@ -20,29 +20,174 @@
 
 #import "FBSDKConstants.h"
 #import "FBSDKInternalUtility.h"
-#import "FBSDKTypeUtility.h"
 
-@implementation FBSDKError
+@implementation NSError (FBSDKError)
 
 #pragma mark - Class Methods
 
-+ (NSString *)errorDomain
++ (NSError *)fbErrorWithCode:(NSInteger)code message:(NSString *)message
 {
-  return FBSDKErrorDomain;
+  return [self fbErrorWithCode:code message:message underlyingError:nil];
 }
 
-+ (BOOL)errorIsNetworkError:(NSError *)error
++ (NSError *)fbErrorWithDomain:(NSErrorDomain)domain
+                          code:(NSInteger)code
+                       message:(NSString *)message
 {
-  if (error == nil) {
-    return NO;
-  }
+  return [self fbErrorWithDomain:domain code:code message:message underlyingError:nil];
+}
 
-  NSError *innerError = error.userInfo[NSUnderlyingErrorKey];
-  if ([self errorIsNetworkError:innerError]) {
++ (NSError *)fbErrorWithCode:(NSInteger)code message:(NSString *)message underlyingError:(NSError *)underlyingError
+{
+  return [self fbErrorWithCode:code userInfo:@{} message:message underlyingError:underlyingError];
+}
+
++ (NSError *)fbErrorWithDomain:(NSErrorDomain)domain
+                          code:(NSInteger)code
+                       message:(NSString *)message
+               underlyingError:(NSError *)underlyingError
+{
+  return [self fbErrorWithDomain:domain code:code userInfo:@{} message:message underlyingError:underlyingError];
+}
+
++ (NSError *)fbErrorWithCode:(NSInteger)code
+                    userInfo:(NSDictionary<NSErrorUserInfoKey, id> *)userInfo
+                     message:(NSString *)message
+             underlyingError:(NSError *)underlyingError
+{
+  return [self fbErrorWithDomain:FBSDKErrorDomain code:code userInfo:userInfo message:message underlyingError:underlyingError];
+}
+
++ (NSError *)fbErrorWithDomain:(NSErrorDomain)domain
+                          code:(NSInteger)code
+                      userInfo:(NSDictionary<NSErrorUserInfoKey,id> *)userInfo
+                       message:(NSString *)message
+               underlyingError:(NSError *)underlyingError
+{
+  NSMutableDictionary *fullUserInfo = [[NSMutableDictionary alloc] initWithDictionary:userInfo];
+  [FBSDKBasicUtility dictionary:fullUserInfo setObject:message forKey:FBSDKErrorDeveloperMessageKey];
+  [FBSDKBasicUtility dictionary:fullUserInfo setObject:underlyingError forKey:NSUnderlyingErrorKey];
+  userInfo = fullUserInfo.count ? [fullUserInfo copy] : nil;
+  return [[NSError alloc] initWithDomain:domain code:code userInfo:userInfo];
+}
+
++ (NSError *)fbInvalidArgumentErrorWithName:(NSString *)name value:(id)value message:(NSString *)message
+{
+  return [self fbInvalidArgumentErrorWithName:name value:value message:message underlyingError:nil];
+}
+
++ (NSError *)fbInvalidArgumentErrorWithDomain:(NSErrorDomain)domain
+                                         name:(NSString *)name
+                                        value:(id)value
+                                      message:(NSString *)message
+{
+  return [self fbInvalidArgumentErrorWithDomain:domain
+                                           name:name
+                                          value:value
+                                        message:message
+                                underlyingError:nil];
+}
+
++ (NSError *)fbInvalidArgumentErrorWithName:(NSString *)name
+                                      value:(id)value
+                                    message:(NSString *)message
+                            underlyingError:(NSError *)underlyingError
+{
+  return [self fbInvalidArgumentErrorWithDomain:FBSDKErrorDomain
+                                           name:name
+                                          value:value
+                                        message:message
+                                underlyingError:underlyingError];
+}
++ (NSError *)fbInvalidArgumentErrorWithDomain:(NSErrorDomain)domain
+                                         name:(NSString *)name
+                                        value:(id)value
+                                      message:(NSString *)message
+                              underlyingError:(NSError *)underlyingError
+{
+  if (!message) {
+    message = [[NSString alloc] initWithFormat:@"Invalid value for %@: %@", name, value];
+  }
+  NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+  [FBSDKBasicUtility dictionary:userInfo setObject:name forKey:FBSDKErrorArgumentNameKey];
+  [FBSDKBasicUtility dictionary:userInfo setObject:value forKey:FBSDKErrorArgumentValueKey];
+  return [self fbErrorWithDomain:domain
+                            code:FBSDKErrorInvalidArgument
+                        userInfo:userInfo
+                         message:message
+                 underlyingError:underlyingError];
+}
+
++ (NSError *)fbInvalidCollectionErrorWithName:(NSString *)name
+                                   collection:(id<NSFastEnumeration>)collection
+                                         item:(id)item
+                                      message:(NSString *)message
+{
+  return [self fbInvalidCollectionErrorWithName:name collection:collection item:item message:message underlyingError:nil];
+}
+
++ (NSError *)fbInvalidCollectionErrorWithName:(NSString *)name
+                                   collection:(id<NSFastEnumeration>)collection
+                                         item:(id)item
+                                      message:(NSString *)message
+                              underlyingError:(NSError *)underlyingError
+{
+  if (!message) {
+    message = [[NSString alloc] initWithFormat:@"Invalid item (%@) found in collection for %@: %@", item, name, collection];
+  }
+  NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
+  [FBSDKBasicUtility dictionary:userInfo setObject:name forKey:FBSDKErrorArgumentNameKey];
+  [FBSDKBasicUtility dictionary:userInfo setObject:item forKey:FBSDKErrorArgumentValueKey];
+  [FBSDKBasicUtility dictionary:userInfo setObject:collection forKey:FBSDKErrorArgumentCollectionKey];
+  return [self fbErrorWithCode:FBSDKErrorInvalidArgument
+                      userInfo:userInfo
+                       message:message
+               underlyingError:underlyingError];
+}
+
++ (NSError *)fbRequiredArgumentErrorWithName:(NSString *)name message:(NSString *)message
+{
+  return [self fbRequiredArgumentErrorWithName:name message:message underlyingError:nil];
+}
+
++ (NSError *)fbRequiredArgumentErrorWithDomain:(NSErrorDomain)domain
+                                          name:(NSString *)name
+                                       message:(NSString *)message
+{
+  if (!message) {
+    message = [[NSString alloc] initWithFormat:@"Value for %@ is required.", name];
+  }
+  return [self fbInvalidArgumentErrorWithDomain:domain name:name value:nil message:message underlyingError:nil];
+}
+
++ (NSError *)fbRequiredArgumentErrorWithName:(NSString *)name
+                                     message:(NSString *)message
+                             underlyingError:(NSError *)underlyingError
+{
+  if (!message) {
+    message = [[NSString alloc] initWithFormat:@"Value for %@ is required.", name];
+  }
+  return [self fbInvalidArgumentErrorWithName:name value:nil message:message underlyingError:underlyingError];
+}
+
++ (NSError *)fbUnknownErrorWithMessage:(NSString *)message
+{
+  return [self fbErrorWithCode:FBSDKErrorUnknown
+                      userInfo:@{}
+                       message:message
+               underlyingError:nil];
+}
+
+#pragma mark - Instance Properties
+
+- (BOOL)isNetworkError
+{
+  NSError *innerError = self.userInfo[NSUnderlyingErrorKey];
+  if (innerError && innerError.isNetworkError) {
     return YES;
   }
 
-  switch (error.code) {
+  switch (self.code) {
     case NSURLErrorTimedOut:
     case NSURLErrorCannotFindHost:
     case NSURLErrorCannotConnectToHost:
@@ -56,108 +201,6 @@
     default:
       return NO;
   }
-}
-
-+ (NSError *)errorWithCode:(NSInteger)code message:(NSString *)message
-{
-  return [self errorWithCode:code message:message underlyingError:nil];
-}
-
-+ (NSError *)errorWithCode:(NSInteger)code message:(NSString *)message underlyingError:(NSError *)underlyingError
-{
-  return [self errorWithCode:code userInfo:nil message:message underlyingError:underlyingError];
-}
-
-+ (NSError *)errorWithCode:(NSInteger)code
-                  userInfo:(NSDictionary *)userInfo
-                   message:(NSString *)message
-           underlyingError:(NSError *)underlyingError
-{
-  NSMutableDictionary *fullUserInfo = [[NSMutableDictionary alloc] initWithDictionary:userInfo];
-  [FBSDKInternalUtility dictionary:fullUserInfo setObject:message forKey:FBSDKErrorDeveloperMessageKey];
-  [FBSDKInternalUtility dictionary:fullUserInfo setObject:underlyingError forKey:NSUnderlyingErrorKey];
-  userInfo = ([fullUserInfo count] ? [fullUserInfo copy] : nil);
-  return [[NSError alloc] initWithDomain:[self errorDomain] code:code userInfo:userInfo];
-}
-
-+ (NSError *)invalidArgumentErrorWithName:(NSString *)name value:(id)value message:(NSString *)message
-{
-  return [self invalidArgumentErrorWithName:name value:value message:message underlyingError:nil];
-}
-
-+ (NSError *)invalidArgumentErrorWithName:(NSString *)name
-                                    value:(id)value
-                                  message:(NSString *)message
-                          underlyingError:(NSError *)underlyingError
-{
-  if (!message) {
-    message = [[NSString alloc] initWithFormat:@"Invalid value for %@: %@", name, value];
-  }
-  NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
-  [FBSDKInternalUtility dictionary:userInfo setObject:name forKey:FBSDKErrorArgumentNameKey];
-  [FBSDKInternalUtility dictionary:userInfo setObject:value forKey:FBSDKErrorArgumentValueKey];
-  return [self errorWithCode:FBSDKInvalidArgumentErrorCode
-                    userInfo:userInfo
-                     message:message
-             underlyingError:underlyingError];
-}
-
-+ (NSError *)invalidCollectionErrorWithName:(NSString *)name
-                                 collection:(id<NSFastEnumeration>)collection
-                                       item:(id)item
-                                    message:(NSString *)message
-{
-  return [self invalidCollectionErrorWithName:name collection:collection item:item message:message underlyingError:nil];
-}
-
-+ (NSError *)invalidCollectionErrorWithName:(NSString *)name
-                                 collection:(id<NSFastEnumeration>)collection
-                                       item:(id)item
-                                    message:(NSString *)message
-                            underlyingError:(NSError *)underlyingError
-{
-  if (!message) {
-    message = [[NSString alloc] initWithFormat:@"Invalid item (%@) found in collection for %@: %@", item, name, collection];
-  }
-  NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
-  [FBSDKInternalUtility dictionary:userInfo setObject:name forKey:FBSDKErrorArgumentNameKey];
-  [FBSDKInternalUtility dictionary:userInfo setObject:item forKey:FBSDKErrorArgumentValueKey];
-  [FBSDKInternalUtility dictionary:userInfo setObject:collection forKey:FBSDKErrorArgumentCollectionKey];
-  return [self errorWithCode:FBSDKInvalidArgumentErrorCode
-                    userInfo:userInfo
-                     message:message
-             underlyingError:underlyingError];
-}
-
-+ (NSError *)requiredArgumentErrorWithName:(NSString *)name message:(NSString *)message
-{
-  return [self requiredArgumentErrorWithName:name message:message underlyingError:nil];
-}
-
-+ (NSError *)requiredArgumentErrorWithName:(NSString *)name
-                                   message:(NSString *)message
-                           underlyingError:(NSError *)underlyingError
-{
-  if (!message) {
-    message = [[NSString alloc] initWithFormat:@"Value for %@ is required.", name];
-  }
-  return [self invalidArgumentErrorWithName:name value:nil message:message underlyingError:underlyingError];
-}
-
-+ (NSError *)unknownErrorWithMessage:(NSString *)message
-{
-  return [self errorWithCode:FBSDKUnknownErrorCode
-                    userInfo:nil
-                     message:message
-             underlyingError:nil];
-}
-
-#pragma mark - Object Lifecycle
-
-- (instancetype)init
-{
-  FBSDK_NO_DESIGNATED_INITIALIZER();
-  return nil;
 }
 
 @end

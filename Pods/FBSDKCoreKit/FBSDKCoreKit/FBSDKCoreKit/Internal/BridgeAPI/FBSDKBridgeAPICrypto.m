@@ -23,9 +23,7 @@
 #import "FBSDKCrypto.h"
 #import "FBSDKError.h"
 #import "FBSDKInternalUtility.h"
-#import "FBSDKMacros.h"
 #import "FBSDKSettings.h"
-#import "FBSDKUtility.h"
 
 static NSString *const FBSDKBridgeAPICryptoCipherKey = @"cipher";
 static NSString *const FBSDKBridgeAPICryptoCipherKeyKey = @"cipher_key";
@@ -37,7 +35,7 @@ static NSString *g_cipherKey = nil;
 
 + (void)addCipherKeyToQueryParameters:(NSMutableDictionary *)queryParameters
 {
-  [FBSDKInternalUtility dictionary:queryParameters setObject:[self _cipherKey] forKey:FBSDKBridgeAPICryptoCipherKeyKey];
+  [FBSDKBasicUtility dictionary:queryParameters setObject:[self _cipherKey] forKey:FBSDKBridgeAPICryptoCipherKeyKey];
 }
 
 + (NSDictionary *)decryptResponseForRequest:(FBSDKBridgeAPIRequest *)request
@@ -58,7 +56,7 @@ static NSString *g_cipherKey = nil;
       NSDictionary *userInfo = @{
                                  FBSDKErrorArgumentValueKey: queryParameters,
                                  };
-      *errorRef = [FBSDKError errorWithCode:FBSDKEncryptionErrorCode
+      *errorRef = [NSError fbErrorWithCode:FBSDKErrorEncryption
                                    userInfo:userInfo
                                     message:@"Error decrypting incoming query parameters."
                             underlyingError:nil];
@@ -66,7 +64,7 @@ static NSString *g_cipherKey = nil;
     return nil;
   }
   NSArray *additionalSignedDataArray = @[
-                                         [[NSBundle mainBundle] bundleIdentifier],
+                                         [NSBundle mainBundle].bundleIdentifier,
                                          [FBSDKSettings appID] ?: @"",
                                          @"bridge",
                                          request.methodName ?: @"",
@@ -88,7 +86,7 @@ static NSString *g_cipherKey = nil;
                                      @"version": additionalSignedDataArray[4],
                                      },
                                  };
-      *errorRef = [FBSDKError errorWithCode:FBSDKEncryptionErrorCode
+      *errorRef = [NSError fbErrorWithCode:FBSDKErrorEncryption
                                    userInfo:userInfo
                                     message:@"Error decrypting incoming query parameters."
                             underlyingError:nil];
@@ -96,7 +94,7 @@ static NSString *g_cipherKey = nil;
     return nil;
   }
   NSString *decryptedString = [[NSString alloc] initWithData:decryptedData encoding:NSUTF8StringEncoding];
-  NSDictionary *decryptedDictionary = [FBSDKUtility dictionaryWithQueryString:decryptedString];
+  NSDictionary<NSString *, NSString *> *decryptedDictionary = [FBSDKBasicUtility dictionaryWithQueryString:decryptedString];
   NSMutableDictionary *decryptedQueryParameters = [[NSMutableDictionary alloc] initWithDictionary:decryptedDictionary];
   decryptedQueryParameters[FBSDKBridgeAPIVersionKey] = version;
   return [decryptedQueryParameters copy];
@@ -105,14 +103,6 @@ static NSString *g_cipherKey = nil;
 + (void)reset
 {
   [self _resetCipherKey];
-}
-
-#pragma mark - Object Lifecycle
-
-- (instancetype)init
-{
-  FBSDK_NO_DESIGNATED_INITIALIZER();
-  return nil;
 }
 
 #pragma mark - Helper Methods

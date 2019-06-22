@@ -25,7 +25,7 @@ static NSString *const FBSDKCameraEffectArgumentsArgumentsKey = @"arguments";
 
 @implementation FBSDKCameraEffectArguments
 {
-  NSMutableDictionary *_arguments;
+  NSMutableDictionary<NSString *, id> *_arguments;
 }
 
 #pragma mark - Object Lifecycle
@@ -53,12 +53,12 @@ static NSString *const FBSDKCameraEffectArgumentsArgumentsKey = @"arguments";
   [self _setValue:[array copy] forKey:key];
 }
 
-- (NSArray *)arrayForKey:(NSString *)key
+- (NSArray<NSString *> *)arrayForKey:(NSString *)key
 {
   return [self _valueOfClass:[NSArray class] forKey:key];
 }
 
-- (NSDictionary *)allArguments
+- (NSDictionary<NSString *, id> *)allArguments;
 {
   return _arguments;
 }
@@ -67,7 +67,7 @@ static NSString *const FBSDKCameraEffectArgumentsArgumentsKey = @"arguments";
 
 - (NSUInteger)hash
 {
-  return [_arguments hash];
+  return _arguments.hash;
 }
 
 - (BOOL)isEqual:(id)object
@@ -93,7 +93,7 @@ static NSString *const FBSDKCameraEffectArgumentsArgumentsKey = @"arguments";
   return YES;
 }
 
-- (id)initWithCoder:(NSCoder *)decoder
+- (instancetype)initWithCoder:(NSCoder *)decoder
 {
   if ((self = [self init])) {
     _arguments = [decoder decodeObjectOfClass:[NSMutableDictionary class]

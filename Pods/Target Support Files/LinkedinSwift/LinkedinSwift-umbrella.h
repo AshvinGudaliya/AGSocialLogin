@@ -16,6 +16,7 @@
 #import "LSHeader.h"
 #import "LSTypesHeader.h"
 #import "NativeAppInstalledChecker.h"
+#import "WebLoginOnly.h"
 #import "LinkedinSwiftConfiguration.h"
 #import "LSLinkedinToken.h"
 #import "LSResponse.h"

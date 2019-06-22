@@ -12,6 +12,21 @@ Linkedin Oauth Helper, depend on Linkedin Native App installed or not, using Lin
 
 Latest version is based on [LinkedIn SDK 1.0.7](https://content.linkedin.com/content/dam/developer/sdk/iOS/li-ios-sdk-1.0.6-release.zip) and [IOSLinkedinAPI for webview auth](https://github.com/jeyben/IOSLinkedInAPI).
 
+⚠️ Linkedin has turned down the support of The Mobile SDK [link](https://developer.linkedin.com/docs/ios-sdk), hopefully they will solve this soon. For now only use web login.
+
+```swift
+let linkedinHelper = LinkedinSwiftHelper(configuration: 
+    LinkedinSwiftConfiguration(
+        clientId: "77tn2ar7gq6lgv", 
+        clientSecret: "iqkDGYpWdhf7WKzA", 
+        state: "DLKDJF45DIWOERCM", 
+        permissions: ["r_basicprofile", "r_emailaddress"]
+    ),
+    nativeAppChecker: WebLoginOnly()
+)
+```
+Try the example app as well.
+
 ## How to use
 
 ```ruby
@@ -62,6 +77,17 @@ func application(application: UIApplication,
     return false
 }
 ```
+:warning: for iOS 9 and above use this instead:
+```swift
+    func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -> Bool {
+        // Linkedin sdk handle redirect
+        if LinkedinSwiftHelper.shouldHandle(url) {
+            return LinkedinSwiftHelper.application(app, open: url, sourceApplication: nil, annotation: nil)
+        }
+        
+        return false
+    }
+```
 - Login:
 ```swift
 linkedinHelper.authorizeSuccess({ (lsToken) -> Void in
@@ -98,5 +124,6 @@ Example project screenshots:
 
 ## Known issues
 
-It seems Linkedin 1.0.7 messed up with `Bitcode support.` again. You need to turn off Bitcode to make it work.
+-It seems Linkedin 1.0.7 messed up with `Bitcode support.` again. You need to turn off Bitcode to make it work.-
+seems can turn on Bitcode now.
 

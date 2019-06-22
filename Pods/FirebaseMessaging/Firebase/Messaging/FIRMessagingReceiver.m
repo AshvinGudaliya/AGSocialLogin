@@ -18,6 +18,9 @@
 
 #import <UIKit/UIKit.h>
 
+#import <GoogleUtilities/GULAppEnvironmentUtil.h>
+#import <GoogleUtilities/GULUserDefaults.h>
+
 #import "FIRMessaging.h"
 #import "FIRMessagingLogger.h"
 #import "FIRMessagingUtilities.h"
@@ -25,15 +28,30 @@
 
 static NSString *const kUpstreamMessageIDUserInfoKey = @"messageID";
 static NSString *const kUpstreamErrorUserInfoKey = @"error";
-
-// Copied from Apple's header in case it is missing in some cases.
-#ifndef NSFoundationVersionNumber_iOS_9_x_Max
-#define NSFoundationVersionNumber_iOS_9_x_Max 1299
-#endif
+/// "Should use Messaging delegate" key stored in NSUserDefaults
+NSString *const kFIRMessagingUserDefaultsKeyUseMessagingDelegate =
+    @"com.firebase.messaging.useMessagingDelegate";
+/// "Should use Messaging Delegate" key stored in Info.plist
+NSString *const kFIRMessagingPlistUseMessagingDelegate =
+    @"FirebaseMessagingUseMessagingDelegateForDirectChannel";
 
 static int downstreamMessageID = 0;
 
+@interface FIRMessagingReceiver ()
+@property(nonatomic, strong) GULUserDefaults *defaults;
+@end
+
 @implementation FIRMessagingReceiver
+
+#pragma mark - Initializer
+
+- (instancetype)initWithUserDefaults:(GULUserDefaults *)defaults {
+  self = [super init];
+  if (self != nil) {
+    _defaults = defaults;
+  }
+  return self;
+}
 
 #pragma mark - FIRMessagingDataMessageManager protocol
 
@@ -42,8 +60,9 @@ static int downstreamMessageID = 0;
     messageID = [[self class] nextMessageID];
   }
 
-  if (floor(NSFoundationVersionNumber) > NSFoundationVersionNumber_iOS_9_x_Max) {
-    // Use delegate method for iOS 10
+  NSInteger majorOSVersion = [[GULAppEnvironmentUtil systemVersion] integerValue];
+  if (majorOSVersion >= 10 || self.useDirectChannel) {
+    // iOS 10 and above or use direct channel is enabled.
     [self scheduleIos10NotificationForMessage:message withIdentifier:messageID];
   } else {
     // Post notification directly to AppDelegate handlers. This is valid pre-iOS 10.
@@ -103,6 +122,7 @@ static int downstreamMessageID = 0;
   FIRMessagingRemoteMessage *wrappedMessage = [[FIRMessagingRemoteMessage alloc] init];
   // TODO: wrap title, body, badge and other fields
   wrappedMessage.appData = [message copy];
+  wrappedMessage.messageID = messageID;
   [self.delegate receiver:self receivedRemoteMessage:wrappedMessage];
 }
 
@@ -142,6 +162,32 @@ static int downstreamMessageID = 0;
   @synchronized (self) {
     ++downstreamMessageID;
     return [NSString stringWithFormat:@"gcm-%d", downstreamMessageID];
+  }
+}
+
+- (BOOL)useDirectChannel {
+  // Check storage
+  id shouldUseMessagingDelegate =
+      [_defaults objectForKey:kFIRMessagingUserDefaultsKeyUseMessagingDelegate];
+  if (shouldUseMessagingDelegate) {
+    return [shouldUseMessagingDelegate boolValue];
+  }
+
+  // Check Info.plist
+  shouldUseMessagingDelegate =
+      [[NSBundle mainBundle] objectForInfoDictionaryKey:kFIRMessagingPlistUseMessagingDelegate];
+  if (shouldUseMessagingDelegate) {
+    return [shouldUseMessagingDelegate boolValue];
+  }
+  // If none of above exists, we go back to default behavior which is NO.
+  return NO;
+}
+
+- (void)setUseDirectChannel:(BOOL)useDirectChannel {
+  BOOL shouldUseMessagingDelegate = [self useDirectChannel];
+  if (useDirectChannel != shouldUseMessagingDelegate) {
+    [_defaults setBool:useDirectChannel forKey:kFIRMessagingUserDefaultsKeyUseMessagingDelegate];
+    [_defaults synchronize];
   }
 }
 

@@ -27,9 +27,20 @@
 #import "FBSDKLikeButtonPopWAV.h"
 #import "FBSDKLikeDialog.h"
 
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_10_0
+
+NSNotificationName const FBSDKLikeActionControllerDidDisableNotification = @"FBSDKLikeActionControllerDidDisableNotification";
+NSNotificationName const FBSDKLikeActionControllerDidResetNotification = @"FBSDKLikeActionControllerDidResetNotification";
+NSNotificationName const FBSDKLikeActionControllerDidUpdateNotification = @"FBSDKLikeActionControllerDidUpdateNotification";
+
+#else
+
 NSString *const FBSDKLikeActionControllerDidDisableNotification = @"FBSDKLikeActionControllerDidDisableNotification";
 NSString *const FBSDKLikeActionControllerDidResetNotification = @"FBSDKLikeActionControllerDidResetNotification";
 NSString *const FBSDKLikeActionControllerDidUpdateNotification = @"FBSDKLikeActionControllerDidUpdateNotification";
+
+#endif
+
 NSString *const FBSDKLikeActionControllerAnimatedKey = @"animated";
 
 #define FBSDK_LIKE_ACTION_CONTROLLER_ANIMATION_DELAY 0.5
@@ -297,9 +308,9 @@ static FBSDKLikeActionControllerCache *_cache = nil;
 
 - (void)toggleLikeWithSoundEnabled:(BOOL)soundEnabled analyticsParameters:(NSDictionary *)analyticsParameters fromViewController:(UIViewController *)fromViewController
 {
-  [FBSDKAppEvents logImplicitEvent:FBSDKAppEventNameFBSDKLikeControlDidTap
-                        valueToSum:nil
+  [FBSDKAppEvents logInternalEvent:FBSDKAppEventNameFBSDKLikeControlDidTap
                         parameters:analyticsParameters
+                isImplicitlyLogged:YES
                        accessToken:_accessToken];
 
   [self _setExecuting:YES forKey:FBSDK_LIKE_ACTION_CONTROLLER_LIKE_PROPERTY_KEY];
@@ -418,9 +429,9 @@ static FBSDKLikeActionControllerCache *_cache = nil;
   if ([error.userInfo[@"error_reason"] isEqualToString:@"dialog_disabled"]) {
     _fbsdkLikeActionControllerDisabled = YES;
 
-    [FBSDKAppEvents logImplicitEvent:FBSDKAppEventNameFBSDKLikeControlDidDisable
-                          valueToSum:nil
+    [FBSDKAppEvents logInternalEvent:FBSDKAppEventNameFBSDKLikeControlDidDisable
                           parameters:[_dialogToAnalyticsParametersMap objectForKey:likeDialog]
+                  isImplicitlyLogged:YES
                          accessToken:_accessToken];
 
     [[NSNotificationCenter defaultCenter] postNotificationName:FBSDKLikeActionControllerDidDisableNotification
@@ -456,14 +467,14 @@ static void FBSDKLikeActionControllerLogError(NSString *currentAction,
                                @"object_id": objectID,
                                @"object_type": NSStringFromFBSDKLikeObjectType(objectType),
                                @"current_action": currentAction,
-                               @"error": [error description] ?: @"",
+                               @"error": error.description ?: @"",
                                };
-  NSString *eventName = ([FBSDKError errorIsNetworkError:error] ?
+  NSString *eventName = (error.isNetworkError ?
                          FBSDKAppEventNameFBSDKLikeControlNetworkUnavailable :
                          FBSDKAppEventNameFBSDKLikeControlError);
-  [FBSDKAppEvents logImplicitEvent:eventName
-                        valueToSum:nil
+  [FBSDKAppEvents logInternalEvent:eventName
                         parameters:parameters
+                isImplicitlyLogged:YES
                        accessToken:accessToken];
 }
 
@@ -661,7 +672,7 @@ static void FBSDKLikeActionControllerAddPublishUnlikeRequest(FBSDKAccessToken *a
                                                              fbsdk_like_action_controller_publish_unlike_completion_block completionHandler)
 {
   FBSDKGraphRequest *request = [[FBSDKGraphRequest alloc] initWithGraphPath:unlikeToken
-                                                                 parameters:nil
+                                                                 parameters:@{}
                                                                 tokenString:accessToken.tokenString
                                                                     version:nil
                                                                  HTTPMethod:@"DELETE"];
@@ -752,7 +763,7 @@ static void FBSDKLikeActionControllerAddRefreshRequests(FBSDKAccessToken *access
     return;
   }
   FBSDKGraphRequestConnection *connection = [[FBSDKGraphRequestConnection alloc] init];
-  [connection overrideVersionPartWith:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
+  [connection overrideGraphAPIVersion:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
   if ([_objectID rangeOfString:@"://"].location != NSNotFound) {
     FBSDKLikeActionControllerAddGetObjectIDWithObjectURLRequest(_accessToken, connection, _objectID, ^(BOOL success,
                                                                                                        NSString *innerVerifiedObjectID,
@@ -786,9 +797,9 @@ static void FBSDKLikeActionControllerAddRefreshRequests(FBSDKAccessToken *access
                       analyticsParameters:(NSDictionary *)analyticsParameters
                        fromViewController:(UIViewController *)fromViewController
 {
-  [FBSDKAppEvents logImplicitEvent:FBSDKAppEventNameFBSDKLikeControlDidPresentDialog
-                        valueToSum:nil
+  [FBSDKAppEvents logInternalEvent:FBSDKAppEventNameFBSDKLikeControlDidPresentDialog
                         parameters:analyticsParameters
+                isImplicitlyLogged:YES
                        accessToken:_accessToken];
   FBSDKLikeDialog *dialog = [[FBSDKLikeDialog alloc] init];
   dialog.objectID = _objectID;
@@ -823,14 +834,14 @@ static void FBSDKLikeActionControllerAddRefreshRequests(FBSDKAccessToken *access
   _objectIsLikedIsPending = YES;
   [self _ensureVerifiedObjectID:^(NSString *verifiedObjectID) {
     FBSDKGraphRequestConnection *connection = [[FBSDKGraphRequestConnection alloc] init];
-    [connection overrideVersionPartWith:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
+    [connection overrideGraphAPIVersion:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
     fbsdk_like_action_controller_publish_like_completion_block completionHandler = ^(BOOL success,
                                                                                      NSString *unlikeToken) {
       self->_objectIsLikedIsPending = NO;
       if (success) {
-        [FBSDKAppEvents logImplicitEvent:FBSDKAppEventNameFBSDKLikeControlDidLike
-                              valueToSum:nil
+        [FBSDKAppEvents logInternalEvent:FBSDKAppEventNameFBSDKLikeControlDidLike
                               parameters:analyticsParameters
+                      isImplicitlyLogged:YES
                              accessToken:self->_accessToken];
         self->_objectIsLikedOnServer = YES;
         self->_unlikeToken = [unlikeToken copy];
@@ -864,13 +875,13 @@ static void FBSDKLikeActionControllerAddRefreshRequests(FBSDKAccessToken *access
 {
   _objectIsLikedIsPending = YES;
   FBSDKGraphRequestConnection *connection = [[FBSDKGraphRequestConnection alloc] init];
-  [connection overrideVersionPartWith:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
+  [connection overrideGraphAPIVersion:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
   fbsdk_like_action_controller_publish_unlike_completion_block completionHandler = ^(BOOL success) {
     self->_objectIsLikedIsPending = NO;
     if (success) {
-      [FBSDKAppEvents logImplicitEvent:FBSDKAppEventNameFBSDKLikeControlDidUnlike
-                            valueToSum:nil
+      [FBSDKAppEvents logInternalEvent:FBSDKAppEventNameFBSDKLikeControlDidUnlike
                             parameters:analyticsParameters
+                    isImplicitlyLogged:YES
                            accessToken:self->_accessToken];
       self->_objectIsLikedOnServer = NO;
       self->_unlikeToken = nil;
@@ -926,7 +937,7 @@ static void FBSDKLikeActionControllerAddRefreshRequests(FBSDKAccessToken *access
 
   [self _ensureVerifiedObjectID:^(NSString *verifiedObjectID) {
     FBSDKGraphRequestConnection *connection = [[FBSDKGraphRequestConnection alloc] init];
-    [connection overrideVersionPartWith:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
+    [connection overrideGraphAPIVersion:FBSDK_LIKE_ACTION_CONTROLLER_API_VERSION];
     FBSDKLikeActionControllerAddRefreshRequests(self->_accessToken,
                                                 connection,
                                                 verifiedObjectID,

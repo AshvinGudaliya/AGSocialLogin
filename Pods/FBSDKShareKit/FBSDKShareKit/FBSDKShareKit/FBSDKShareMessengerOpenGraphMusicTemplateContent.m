@@ -32,8 +32,8 @@ static NSArray<NSDictionary<NSString *, id> *> *_SerializableOpenGraphMusicTempl
   NSMutableArray<NSDictionary<NSString *, id> *> *serializableOpenGraphMusicTemplateContent = [NSMutableArray array];
 
   NSMutableDictionary<NSString *, id> *openGraphMusicTemplateContentDictionary = [NSMutableDictionary dictionary];
-  [FBSDKInternalUtility dictionary:openGraphMusicTemplateContentDictionary setObject:openGraphMusicTemplateContent.url.absoluteString forKey:@"url"];
-  [FBSDKInternalUtility dictionary:openGraphMusicTemplateContentDictionary setObject:SerializableButtonsFromButton(openGraphMusicTemplateContent.button) forKey:kFBSDKShareMessengerButtonsKey];
+  [FBSDKBasicUtility dictionary:openGraphMusicTemplateContentDictionary setObject:openGraphMusicTemplateContent.url.absoluteString forKey:@"url"];
+  [FBSDKBasicUtility dictionary:openGraphMusicTemplateContentDictionary setObject:SerializableButtonsFromButton(openGraphMusicTemplateContent.button) forKey:kFBSDKShareMessengerButtonsKey];
   [serializableOpenGraphMusicTemplateContent addObject:openGraphMusicTemplateContentDictionary];
 
   return serializableOpenGraphMusicTemplateContent;
@@ -64,26 +64,30 @@ static NSArray<NSDictionary<NSString *, id> *> *_SerializableOpenGraphMusicTempl
 
 #pragma mark - FBSDKSharingContent
 
-- (void)addToParameters:(NSMutableDictionary<NSString *, id> *)parameters
-          bridgeOptions:(FBSDKShareBridgeOptions)bridgeOptions
+- (NSDictionary<NSString *, id> *)addParameters:(NSDictionary<NSString *, id> *)existingParameters
+                                  bridgeOptions:(FBSDKShareBridgeOptions)bridgeOptions
 {
+  NSMutableDictionary<NSString *, id> *updatedParameters = [NSMutableDictionary dictionaryWithDictionary:existingParameters];
+
   NSMutableDictionary<NSString *, id> *payload = [NSMutableDictionary dictionary];
-  [payload setObject:@"open_graph" forKey:kFBSDKShareMessengerTemplateTypeKey];
-  [payload setObject:_SerializableOpenGraphMusicTemplateContentFromContent(self) forKey:kFBSDKShareMessengerElementsKey];
+  payload[kFBSDKShareMessengerTemplateTypeKey] = @"open_graph";
+  payload[kFBSDKShareMessengerElementsKey] = _SerializableOpenGraphMusicTemplateContentFromContent(self);
 
   NSMutableDictionary<NSString *, id> *attachment = [NSMutableDictionary dictionary];
-  [attachment setObject:kFBSDKShareMessengerTemplateKey forKey:kFBSDKShareMessengerTypeKey];
-  [attachment setObject:payload forKey:kFBSDKShareMessengerPayloadKey];
+  attachment[kFBSDKShareMessengerTypeKey] = kFBSDKShareMessengerTemplateKey;
+  attachment[kFBSDKShareMessengerPayloadKey] = payload;
 
   NSMutableDictionary<NSString *, id> *contentForShare = [NSMutableDictionary dictionary];
-  [contentForShare setObject:attachment forKey:kFBSDKShareMessengerAttachmentKey];
+  contentForShare[kFBSDKShareMessengerAttachmentKey] = attachment;
 
   NSMutableDictionary<NSString *, id> *contentForPreview = [NSMutableDictionary dictionary];
-  [FBSDKInternalUtility dictionary:contentForPreview setObject:@"OPEN_GRAPH" forKey:@"preview_type"];
-  [FBSDKInternalUtility dictionary:contentForPreview setObject:_url.absoluteString forKey:@"open_graph_url"];
+  [FBSDKBasicUtility dictionary:contentForPreview setObject:@"OPEN_GRAPH" forKey:@"preview_type"];
+  [FBSDKBasicUtility dictionary:contentForPreview setObject:_url.absoluteString forKey:@"open_graph_url"];
   AddToContentPreviewDictionaryForButton(contentForPreview, _button);
 
-  [FBSDKShareMessengerContentUtility addToParameters:parameters contentForShare:contentForShare contentForPreview:contentForPreview];
+  [FBSDKShareMessengerContentUtility addToParameters:updatedParameters contentForShare:contentForShare contentForPreview:contentForPreview];
+
+  return updatedParameters;
 }
 
 #pragma mark - FBSDKSharingValidation

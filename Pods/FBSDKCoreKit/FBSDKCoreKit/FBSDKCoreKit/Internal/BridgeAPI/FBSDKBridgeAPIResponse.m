@@ -23,9 +23,7 @@
 #import "FBSDKBridgeAPIProtocolType.h"
 #import "FBSDKBridgeAPIRequest+Private.h"
 #import "FBSDKInternalUtility.h"
-#import "FBSDKMacros.h"
 #import "FBSDKTypeUtility.h"
-#import "FBSDKUtility.h"
 
 @interface FBSDKBridgeAPIResponse ()
 - (instancetype)initWithRequest:(FBSDKBridgeAPIRequest *)request
@@ -69,7 +67,7 @@ NS_DESIGNATED_INITIALIZER;
       break;
     }
   }
-  NSDictionary *queryParameters = [FBSDKUtility dictionaryWithQueryString:responseURL.query];
+  NSDictionary<NSString *, NSString *> *queryParameters = [FBSDKBasicUtility dictionaryWithQueryString:responseURL.query];
   queryParameters = [FBSDKBridgeAPICrypto decryptResponseForRequest:request
                                                     queryParameters:queryParameters
                                                               error:errorRef];
@@ -117,12 +115,6 @@ NS_DESIGNATED_INITIALIZER;
     _error = [error copy];
   }
   return self;
-}
-
-- (instancetype)init
-{
-  FBSDK_NOT_DESIGNATED_INITIALIZER(initWithRequest:responseParameters:cancelled:error:);
-  return [self initWithRequest:nil responseParameters:nil cancelled:NO error:nil];
 }
 
 #pragma mark - NSCopying
