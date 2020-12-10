@@ -1,6 +1,0 @@
-framework module GoneVisible {
-  umbrella header "GoneVisible-umbrella.h"
-
-  export *
-  module * { export * }
-}
