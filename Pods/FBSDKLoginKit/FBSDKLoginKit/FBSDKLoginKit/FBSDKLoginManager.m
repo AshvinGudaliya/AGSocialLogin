@@ -19,11 +19,16 @@
 #import "FBSDKLoginManager+Internal.h"
 #import "FBSDKLoginManagerLoginResult+Internal.h"
 
-#import <FBSDKCoreKit/FBSDKAccessToken.h>
-#import <FBSDKCoreKit/FBSDKSettings.h>
+#ifdef SWIFT_PACKAGE
+#import "FBSDKAccessToken.h"
+#import "FBSDKSettings.h"
+#else
+#import <FBSDKCoreKit/FBSDKCoreKit.h>
+#endif
+
+#import "FBSDKCoreKit+Internal.h"
 
 #import "_FBSDKLoginRecoveryAttempter.h"
-#import "FBSDKCoreKit+Internal.h"
 #import "FBSDKLoginCompletion.h"
 #import "FBSDKLoginConstants.h"
 #import "FBSDKLoginError.h"
@@ -313,7 +318,7 @@ typedef NS_ENUM(NSInteger, FBSDKLoginManagerState) {
 
   NSMutableDictionary *loginParams = [NSMutableDictionary dictionary];
   loginParams[@"client_id"] = [FBSDKSettings appID];
-  loginParams[@"response_type"] = @"token,signed_request";
+  loginParams[@"response_type"] = @"token_or_nonce,signed_request";
   loginParams[@"redirect_uri"] = @"fbconnect://success";
   loginParams[@"display"] = @"touch";
   loginParams[@"sdk"] = @"ios";
@@ -346,7 +351,7 @@ typedef NS_ENUM(NSInteger, FBSDKLoginManagerState) {
 
   [_logger startSessionForLoginManager:self];
 
-  [self logInWithBehavior:self.loginBehavior];
+  [self logIn];
 }
 
 - (void)reauthorizeDataAccess:(FBSDKLoginManagerLoginResultBlock)handler
@@ -358,10 +363,10 @@ typedef NS_ENUM(NSInteger, FBSDKLoginManagerState) {
   _requestedPermissions = [NSSet set];
   self.authType = FBSDKLoginAuthTypeReauthorize;
   [_logger startSessionForLoginManager:self];
-  [self logInWithBehavior:self.loginBehavior];
+  [self logIn];
 }
 
-- (void)logInWithBehavior:(FBSDKLoginBehavior)loginBehavior
+- (void)logIn
 {
   FBSDKServerConfiguration *serverConfiguration = [FBSDKServerConfigurationManager cachedServerConfiguration];
   NSDictionary *loginParams = [self logInParametersWithPermissions:_requestedPermissions serverConfiguration:serverConfiguration];
@@ -480,7 +485,7 @@ typedef NS_ENUM(NSInteger, FBSDKLoginManagerState) {
       [[FBSDKBridgeAPI sharedInstance] openURL:authURL sender:self handler:handlerWrapper];
     }
   } else {
-    error = error ?: [NSError fbErrorWithCode:FBSDKLoginErrorUnknown message:@"Failed to construct oauth browser url"];
+    error = error ?: [FBSDKError errorWithCode:FBSDKLoginErrorUnknown message:@"Failed to construct oauth browser url"];
     if (handler) {
       handler(NO, nil, error);
     }
@@ -519,12 +524,8 @@ typedef NS_ENUM(NSInteger, FBSDKLoginManagerState) {
         annotation:(id)annotation
 {
   // verify the URL is intended as a callback for the SDK's log in
-  BOOL isFacebookURL = [url.scheme hasPrefix:[NSString stringWithFormat:@"fb%@", [FBSDKSettings appID]]] &&
+  return [url.scheme hasPrefix:[NSString stringWithFormat:@"fb%@", [FBSDKSettings appID]]] &&
   [url.host isEqualToString:@"authorize"];
-
-  BOOL isExpectedSourceApplication = [sourceApplication hasPrefix:@"com.facebook"] || [sourceApplication hasPrefix:@"com.apple"] || [sourceApplication hasPrefix:@"com.burbn"];
-
-  return isFacebookURL && isExpectedSourceApplication;
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application

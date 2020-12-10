@@ -20,8 +20,9 @@
 
 #import <StoreKit/StoreKit.h>
 
-#import "FBSDKAppEvents+Internal.h"
 #import "FBSDKCoreKit+Internal.h"
+
+#import "FBSDKAppEvents+Internal.h"
 #import "FBSDKDynamicFrameworkLoader.h"
 #import "FBSDKLogger.h"
 #import "FBSDKSettings.h"
@@ -38,11 +39,14 @@ static NSString *const FBSDKAppEventParameterNameOriginalTransactionID = @"fb_or
 static NSString *const FBSDKAppEventParameterNameTransactionID = @"fb_transaction_id";
 static NSString *const FBSDKAppEventParameterNameTransactionDate = @"fb_transaction_date";
 static NSString *const FBSDKAppEventParameterNameSubscriptionPeriod = @"fb_iap_subs_period";
+static NSString *const FBSDKAppEventParameterNameIsStartTrial = @"fb_iap_is_start_trial";
 static NSString *const FBSDKAppEventParameterNameHasFreeTrial = @"fb_iap_has_free_trial";
 static NSString *const FBSDKAppEventParameterNameTrialPeriod = @"fb_iap_trial_period";
 static NSString *const FBSDKAppEventParameterNameTrialPrice = @"fb_iap_trial_price";
 static int const FBSDKMaxParameterValueLength = 100;
 static NSMutableArray *g_pendingRequestors;
+
+static NSString *const FBSDKGateKeeperAppEventsIfAutoLogSubs = @"app_events_if_auto_log_subs";
 
 @interface FBSDKPaymentProductRequestor : NSObject<SKProductsRequestDelegate>
 
@@ -207,7 +211,9 @@ static NSMutableArray *g_pendingRequestors;
 
 - (void)logTransactionEvent:(SKProduct *)product
 {
-  if ([self isSubscription:product]) {
+  if ([self isSubscription:product] &&
+      [FBSDKGateKeeperManager boolForKey:FBSDKGateKeeperAppEventsIfAutoLogSubs
+                            defaultValue:NO]) {
     [self logImplicitSubscribeTransaction:self.transaction ofProduct:product];
   } else {
     [self logImplicitPurchaseTransaction:self.transaction ofProduct:product];
@@ -270,6 +276,7 @@ static NSMutableArray *g_pendingRequestors;
       // subs inapp
       eventParameters[FBSDKAppEventParameterNameSubscriptionPeriod] = [self durationOfSubscriptionPeriod:product.subscriptionPeriod];
       eventParameters[FBSDKAppEventParameterNameInAppPurchaseType] = @"subs";
+      eventParameters[FBSDKAppEventParameterNameIsStartTrial] = [self isStartTrial:transaction ofProduct:product] ? @"1" : @"0";
       // trial information for subs
       SKProductDiscount *discount = product.introductoryPrice;
       if (discount) {

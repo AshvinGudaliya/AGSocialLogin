@@ -18,7 +18,11 @@
 
 #import "FBSDKGameRequestDialog.h"
 
+#ifdef FBSDKCOCOAPODS
+#import <FBSDKCoreKit/FBSDKCoreKit+Internal.h>
+#else
 #import "FBSDKCoreKit+Internal.h"
+#endif
 #import "FBSDKGameRequestFrictionlessRecipientCache.h"
 #import "FBSDKShareConstants.h"
 #import "FBSDKShareUtility.h"
@@ -88,9 +92,9 @@ static FBSDKGameRequestFrictionlessRecipientCache *_recipientCache = nil;
 {
   NSError *error;
   if (!self.canShow) {
-    error = [NSError fbErrorWithDomain:FBSDKShareErrorDomain
-                                  code:FBSDKShareErrorDialogNotAvailable
-                               message:@"Game request dialog is not available."];
+    error = [FBSDKError errorWithDomain:FBSDKShareErrorDomain
+                                   code:FBSDKShareErrorDialogNotAvailable
+                                message:@"Game request dialog is not available."];
     [_delegate gameRequestDialog:self didFailWithError:error];
     return NO;
   }
@@ -145,10 +149,10 @@ static FBSDKGameRequestFrictionlessRecipientCache *_recipientCache = nil;
     return [self.content validateWithOptions:FBSDKShareBridgeOptionsDefault error:errorRef];
   }
   if (errorRef != NULL) {
-    *errorRef = [NSError fbInvalidArgumentErrorWithDomain:FBSDKShareErrorDomain
-                                                     name:@"content"
-                                                    value:self.content
-                                                  message:nil];
+    *errorRef = [FBSDKError invalidArgumentErrorWithDomain:FBSDKShareErrorDomain
+                                                      name:@"content"
+                                                     value:self.content
+                                                   message:nil];
   }
   return NO;
 }
@@ -165,7 +169,7 @@ static FBSDKGameRequestFrictionlessRecipientCache *_recipientCache = nil;
   }
   [self _cleanUp];
 
-  NSError *error = [NSError fbErrorWithCode:[FBSDKTypeUtility unsignedIntegerValue:results[@"error_code"]]
+  NSError *error = [FBSDKError errorWithCode:[FBSDKTypeUtility unsignedIntegerValue:results[@"error_code"]]
                                     message:[FBSDKTypeUtility stringValue:results[@"error_message"]]];
   if (!error.code) {
     // reformat "to[x]" keys into an array.

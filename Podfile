@@ -25,6 +25,6 @@ target 'AGSocialLogin' do
     pod 'GoneVisible'
 
     pod 'TransitionButton'
-    pod 'CTKFlagPhoneNumber'
+    #pod 'CTKFlagPhoneNumber'
     pod 'SinchVerification-Swift'
 end

@@ -18,7 +18,11 @@
 
 #import "FBSDKShareMediaContent.h"
 
+#ifdef FBSDKCOCOAPODS
+#import <FBSDKCoreKit/FBSDKCoreKit+Internal.h>
+#else
 #import "FBSDKCoreKit+Internal.h"
+#endif
 #import "FBSDKHashtag.h"
 #import "FBSDKShareConstants.h"
 #import "FBSDKSharePhoto.h"
@@ -97,20 +101,20 @@
       FBSDKSharePhoto *photo = (FBSDKSharePhoto *)media;
       if (![photo validateWithOptions:bridgeOptions error:NULL]) {
         if (errorRef != NULL) {
-          *errorRef = [NSError fbInvalidArgumentErrorWithDomain:FBSDKShareErrorDomain
-                                                           name:@"media"
-                                                          value:media
-                                                        message:@"photos must have UIImages"];
+          *errorRef = [FBSDKError invalidArgumentErrorWithDomain:FBSDKShareErrorDomain
+                                                            name:@"media"
+                                                           value:media
+                                                         message:@"photos must have UIImages"];
         }
         return NO;
       }
     } else if ([media isKindOfClass:[FBSDKShareVideo class]]) {
       if (videoCount > 0) {
         if (errorRef != NULL) {
-          *errorRef = [NSError fbInvalidArgumentErrorWithDomain:FBSDKShareErrorDomain
-                                                           name:@"media"
-                                                          value:media
-                                                        message:@"Only 1 video is allowed"];
+          *errorRef = [FBSDKError invalidArgumentErrorWithDomain:FBSDKShareErrorDomain
+                                                            name:@"media"
+                                                           value:media
+                                                         message:@"Only 1 video is allowed"];
           return NO;
         }
       }
@@ -125,10 +129,10 @@
 
     } else {
       if (errorRef != NULL) {
-        *errorRef = [NSError fbInvalidArgumentErrorWithDomain:FBSDKShareErrorDomain
-                                                         name:@"media"
-                                                        value:media
-                                                      message:@"Only FBSDKSharePhoto and FBSDKShareVideo are allowed in `media` property"];
+        *errorRef = [FBSDKError invalidArgumentErrorWithDomain:FBSDKShareErrorDomain
+                                                          name:@"media"
+                                                         value:media
+                                                       message:@"Only FBSDKSharePhoto and FBSDKShareVideo are allowed in `media` property"];
       }
       return NO;
     }

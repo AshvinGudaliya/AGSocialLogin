@@ -20,7 +20,11 @@
 
 #import "FBSDKCameraEffectArguments+Internal.h"
 #import "FBSDKCameraEffectTextures+Internal.h"
+#ifdef FBSDKCOCOAPODS
+#import <FBSDKCoreKit/FBSDKCoreKit+Internal.h>
+#else
 #import "FBSDKCoreKit+Internal.h"
+#endif
 #import "FBSDKHashtag.h"
 #import "FBSDKShareUtility.h"
 
@@ -124,9 +128,9 @@ static NSString *const kFBSDKShareCameraEffectContentUUIDKey = @"uuid";
     NSCharacterSet* nonDigitCharacters = [NSCharacterSet decimalDigitCharacterSet].invertedSet;
     if ([_effectID rangeOfCharacterFromSet:nonDigitCharacters].location != NSNotFound) {
       if (errorRef != NULL) {
-        *errorRef = [NSError fbInvalidArgumentErrorWithName:@"effectID"
-                                                      value:_effectID
-                                                    message:@"Invalid value for effectID, effectID can contain only numerical characters."];
+        *errorRef = [FBSDKError invalidArgumentErrorWithName:@"effectID"
+                                                       value:_effectID
+                                                     message:@"Invalid value for effectID, effectID can contain only numerical characters."];
       }
       return NO;
     }

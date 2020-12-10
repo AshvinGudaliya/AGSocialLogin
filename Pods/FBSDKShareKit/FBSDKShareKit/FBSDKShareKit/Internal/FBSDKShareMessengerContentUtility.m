@@ -18,7 +18,11 @@
 
 #import "FBSDKShareMessengerContentUtility.h"
 
+#ifdef FBSDKCOCOAPODS
+#import <FBSDKCoreKit/FBSDKCoreKit+Internal.h>
+#else
 #import "FBSDKCoreKit+Internal.h"
+#endif
 #import "FBSDKShareConstants.h"
 #import "FBSDKShareMessengerGenericTemplateContent.h"
 #import "FBSDKShareMessengerGenericTemplateElement.h"
@@ -35,6 +39,7 @@ NSString *const kFBSDKShareMessengerAttachmentKey = @"attachment";
 NSString *const kFBSDKShareMessengerElementsKey = @"elements";
 NSString *const kFBSDKShareMessengerButtonsKey = @"buttons";
 
+DEPRECATED_FOR_MESSENGER
 static void _AddToContentPreviewDictionaryForURLButton(NSMutableDictionary<NSString *, id> *dictionary,
                                                        FBSDKShareMessengerURLActionButton *urlButton)
 {
@@ -59,7 +64,10 @@ void AddToContentPreviewDictionaryForButton(NSMutableDictionary<NSString *, id> 
   }
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
 @implementation FBSDKShareMessengerContentUtility
+#pragma clang diagnostic pop
 
 static NSString *_WebviewHeightRatioString(FBSDKShareMessengerURLActionButtonWebviewHeightRatio heightRatio) {
   switch (heightRatio) {
@@ -136,10 +144,10 @@ NSArray<NSDictionary<NSString *, id> *> *SerializableButtonsFromButton(id<FBSDKS
     (urlActionButton.isMessengerExtensionURL ? [FBSDKShareUtility validateRequiredValue:pageID name:@"content pageID" error:errorRef] : YES);
   } else {
     if (errorRef != NULL) {
-      *errorRef = [NSError fbInvalidArgumentErrorWithDomain:FBSDKShareErrorDomain
-                                                       name:@"buttons"
-                                                      value:button
-                                                    message:nil];
+      *errorRef = [FBSDKError invalidArgumentErrorWithDomain:FBSDKShareErrorDomain
+                                                        name:@"buttons"
+                                                       value:button
+                                                     message:nil];
     }
     return NO;
   }
